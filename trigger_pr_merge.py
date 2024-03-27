@@ -106,7 +106,7 @@ def check_workflow_status(pr_number):
         # print(workflow_runs)
         for run in workflow_runs:
             if f"Merge pull request #{pr_number}" in run["head_commit"]["message"] or \
-               f"Merge pull request #{pr_number}" in run["display_title"]:
+                    f"Merge pull request #{pr_number}" in run["display_title"]:
                 if run["status"] == "completed" and run["conclusion"] == "success":
                     print(f"Workflow for PR #{pr_number} has completed.")
                     return True  # Workflow has finished executing
@@ -144,30 +144,23 @@ def save_processed_pr_number(pr_number, message_ts):
 
 def load_latest_processed_pr_data():
     try:
-        with open(PROCESSED_PR_FILE, "rb") as file:
-            # Attempt to go to the second-to-last byte of the file
-            file.seek(-2, os.SEEK_END)
-
-            # Keep moving backwards until you find the newline character
-            while file.read(1) != b'\n':
-                file.seek(-2, os.SEEK_CUR)
-
-            # Read the last line
-            last_line = file.readline().decode()
-
+        with open(PROCESSED_PR_FILE, "r") as file:
+            lines = file.readlines()
+            if lines:
+                last_line = lines[-1].strip()
+                if last_line.endswith("%"):
+                    last_line = last_line[:-1].strip()  # Remove the trailing "%" character
+                parts = last_line.split(',')
+                if len(parts) == 2:
+                    # Return the dictionary with the last processed PR number and its timestamp
+                    return {parts[0]: parts[1]}
     except FileNotFoundError:
+        print("File not found.")
         return {}
     except OSError:
-        # The OSError is expected in cases where the file is empty or too small,
-        # so handle it by returning an empty dictionary.
+        # Handle other file-related errors, such as the file being empty
         return {}
-
-    parts = last_line.strip().split(',')
-    if len(parts) == 2:
-        # Return the dictionary with the last processed PR number and its timestamp
-        return {parts[0]: parts[1]}
-    else:
-        return {}
+    return {}
 
 
 # Function to find the latest PR message in the channel and return it
@@ -230,9 +223,11 @@ def continuously_check_reactions(threshold=1):  # Threshold is 1 thumbs-up react
         # load processed PR numbers from the file to avoid processing the same PR multiple times
         # to prevent redundant workflow triggers
         processed_pr_numbers = load_latest_processed_pr_data()
+        print(processed_pr_numbers)
         # extact the latest timestamp from the processed PR numbers
         latest_ts_from_file = max([float(ts) for ts in processed_pr_numbers.values()]) if processed_pr_numbers else None
 
+        print(latest_ts_from_file)
         # Find the latest PR message in the channel
         latest_pr_message = find_latest_pr_opened_message(SLACK_CHANNEL_ID, latest_ts_from_file)
         # print(latest_pr_message)
@@ -243,6 +238,8 @@ def continuously_check_reactions(threshold=1):  # Threshold is 1 thumbs-up react
             message_ts = latest_pr_message.get("ts")  # timestamp of the message
 
             # check if the PR is found in messages and not processed already (not in the file)
+            print(processed_pr_numbers.keys())
+            print(f"this is {load_latest_processed_pr_data()}")
             if pr_number and pr_number not in processed_pr_numbers:
                 # Get the thumbs-up reaction count on the message
                 message_id = latest_pr_message.get("ts")  # timestamp of the message
@@ -265,7 +262,7 @@ def continuously_check_reactions(threshold=1):  # Threshold is 1 thumbs-up react
                         else:
                             print(f"PR #{pr_number} is not mergeable or timed out waiting for merge.")
                     else:
-                        print(f"PR #{pr_number} is already merged.")
+                        print(f"PR #{pr_number} is already merged. No api called made.")
             else:
                 print(f"PR number: {pr_number} already processed and on file.")
         else:
