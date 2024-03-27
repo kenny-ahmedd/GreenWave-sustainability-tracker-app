@@ -138,7 +138,7 @@ def is_pr_already_in_file(pr_number):
 # method to save the processed PR number to the file with their timestamps
 def save_processed_pr_number(pr_number, message_ts):
     print(f"local. Saving PR #{pr_number} and {message_ts} to the file.")
-    with open(PROCESSED_PR_FILE, "a") as file:
+    with open(PROCESSED_PR_FILE, "a", newline="\n") as file:
         file.write(f"{pr_number},{message_ts}\n")
 
 
