@@ -19,6 +19,7 @@ on:
   schedule:
     - cron: '19 18 * * 2'
 
+run-name: Analyze code for security vulnerabilities
 jobs:
   analyze:
     name: Analyze

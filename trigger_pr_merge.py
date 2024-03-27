@@ -5,7 +5,7 @@ import time
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # only needed locally Heroku does not need it
+# load_dotenv()  # only needed locally Heroku does not need it
 
 # Slack configurations
 SLACK_CHANNEL_ID = os.getenv('SLACK_CHANNEL_ID')
@@ -223,11 +223,9 @@ def continuously_check_reactions(threshold=1):  # Threshold is 1 thumbs-up react
         # load processed PR numbers from the file to avoid processing the same PR multiple times
         # to prevent redundant workflow triggers
         processed_pr_numbers = load_latest_processed_pr_data()
-        print(processed_pr_numbers)
         # extact the latest timestamp from the processed PR numbers
         latest_ts_from_file = max([float(ts) for ts in processed_pr_numbers.values()]) if processed_pr_numbers else None
 
-        print(latest_ts_from_file)
         # Find the latest PR message in the channel
         latest_pr_message = find_latest_pr_opened_message(SLACK_CHANNEL_ID, latest_ts_from_file)
         # print(latest_pr_message)
@@ -238,8 +236,6 @@ def continuously_check_reactions(threshold=1):  # Threshold is 1 thumbs-up react
             message_ts = latest_pr_message.get("ts")  # timestamp of the message
 
             # check if the PR is found in messages and not processed already (not in the file)
-            print(processed_pr_numbers.keys())
-            print(f"this is {load_latest_processed_pr_data()}")
             if pr_number and pr_number not in processed_pr_numbers:
                 # Get the thumbs-up reaction count on the message
                 message_id = latest_pr_message.get("ts")  # timestamp of the message
@@ -266,7 +262,7 @@ def continuously_check_reactions(threshold=1):  # Threshold is 1 thumbs-up react
             else:
                 print(f"PR number: {pr_number} already processed and on file.")
         else:
-            print("No 'Pull Request Opened' message found in the channel.")
+            print("No new pull requested found in the channel.")
         time.sleep(60)  # Check every minute (60 seconds)
 
 

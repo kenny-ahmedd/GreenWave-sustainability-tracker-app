@@ -6,6 +6,7 @@ on:
     branches:
       - main # Updated to target the main branch (you can assign any part of choice for merging)
 
+run-name: Notify Slack on PR ${{ github.event.pull_request.number }}
 jobs:
   notify_slack:
     runs-on: ubuntu-latest
