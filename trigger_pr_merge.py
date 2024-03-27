@@ -5,7 +5,7 @@ import time
 import os
 from dotenv import load_dotenv
 
-# load_dotenv()  # only needed locally Heroku does not need it
+load_dotenv()  # only needed locally Heroku does not need it
 
 # Slack configurations
 SLACK_CHANNEL_ID = os.getenv('SLACK_CHANNEL_ID')
@@ -88,14 +88,29 @@ def is_pr_merged(pr_number):
 
 
 # waits for PR to be merged and returns True if merged and False otherwise
-def wait_for_pr_to_merge(pr_number, timeout=1):
+def wait_for_pr_to_merge(pr_number, timeout=100):  # Timeout is 120 seconds
     start_time = time.time()
     while time.time() - start_time <= timeout:
-        if is_pr_mergeable(pr_number):
-            if check_pr_merged(pr_number):
-                return True  # PR is mergeable
-            time.sleep(1)  # Wait for 5 seconds before checking again
-    return False  # Timeout reached, PR is not mergeable
+        if check_workflow_status(pr_number):
+            print("checking workflow status")
+            return True  # Workflow has finished executing
+        time.sleep(1)  # Wait for 5 seconds before checking again
+    return False  # Timeout reached, workflow execution not completed
+
+
+def check_workflow_status(pr_number):
+    # Get the list of workflow runs for the repository
+    response = requests.get(f"https://api.github.com/repos/{GITHUB_REPO}/actions/runs", headers=github_headers)
+    if response.status_code == 200:
+        workflow_runs = response.json()["workflow_runs"]
+        # print(workflow_runs)
+        for run in workflow_runs:
+            if f"Merge pull request #{pr_number}" in run["head_commit"]["message"] or \
+               f"Merge pull request #{pr_number}" in run["display_title"]:
+                if run["status"] == "completed" and run["conclusion"] == "success":
+                    print(f"Workflow for PR #{pr_number} has completed.")
+                    return True  # Workflow has finished executing
+    return False  # Workflow execution not completed or not found
 
 
 # checks if PR is merged and returns True if merged and False otherwise
@@ -122,6 +137,7 @@ def is_pr_already_in_file(pr_number):
 
 # method to save the processed PR number to the file with their timestamps
 def save_processed_pr_number(pr_number, message_ts):
+    print(f"local. Saving PR #{pr_number} and {message_ts} to the file.")
     with open(PROCESSED_PR_FILE, "a") as file:
         file.write(f"{pr_number},{message_ts}\n")
 
@@ -209,7 +225,7 @@ def extract_pr_number(message):
     return None
 
 
-def continuously_check_reactions(threshold=1):
+def continuously_check_reactions(threshold=1):  # Threshold is 1 thumbs-up reaction by default (can be changed)
     while True:
         # load processed PR numbers from the file to avoid processing the same PR multiple times
         # to prevent redundant workflow triggers
@@ -241,6 +257,8 @@ def continuously_check_reactions(threshold=1):
                             trigger_github_workflow(pr_number)
                         if wait_for_pr_to_merge(pr_number):  # wait for PR to be merged
                             if check_pr_merged(pr_number):  # check if merging is completed
+                                # print saving PR number and timestamp to the file
+                                print("saving PR number and timestamp to the file")
                                 save_processed_pr_number(pr_number, message_ts)  # save the PR number to the file
                             else:
                                 print(f"PR #{pr_number} merging failed.")
